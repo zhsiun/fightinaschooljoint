@@ -1,0 +1,35 @@
+local targetAnimationSpeed = 5.9 -- Desired animation speed
+local toolName = "Fight" 
+
+
+local player = game.Players.LocalPlayer
+local function setupCharacter(character)
+    local humanoid = character:WaitForChild("Humanoid")
+    local animator = humanoid:FindFirstChild("Animator")
+
+   
+    local function isToolEquipped()
+        local tool = character:FindFirstChild(toolName)
+        return tool and tool:IsA("Tool")
+    end
+
+  
+    task.spawn(function()
+        while true do
+            if isToolEquipped() and animator then
+                for _, track in pairs(animator:GetPlayingAnimationTracks()) do
+                    track:AdjustSpeed(targetAnimationSpeed) 
+                end
+            end
+            task.wait(0.1) 
+        end
+    end)
+end
+
+
+player.CharacterAdded:Connect(setupCharacter)
+
+
+if player.Character then
+    setupCharacter(player.Character)
+end

@@ -1,35 +1,343 @@
-local targetAnimationSpeed = 5.9 -- Desired animation speed
-local toolName = "Fight" 
+local Players = game:GetService("Players")
+local HITBOX_SIZE = Vector3.new(6, 6, 6)
 
+local player = Players.LocalPlayer
+local enabled = false
+local rootTransparency = 0.4
+local visualTransparency = 0.2
+
+-- Create GUI
+local screenGui = game.CoreGui:FindFirstChild("HitboxGui")
+if not screenGui then
+    screenGui = Instance.new("ScreenGui", game.CoreGui)
+    screenGui.Name = "HitboxGui"
+end
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 320, 0, 180)
+frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local UICorner = Instance.new("UICorner", frame)
+UICorner.CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "Z's Hitbox "
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.BackgroundTransparency = 1
+
+-- Enable/Disable Button
+local toggleButton = Instance.new("TextButton", frame)
+toggleButton.Size = UDim2.new(1, -20, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 30)
+toggleButton.Text = "Enable Hitbox"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.TextSize = 14
+toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+toggleButton.BorderSizePixel = 0
+
+local toggleCorner = Instance.new("UICorner", toggleButton)
+toggleCorner.CornerRadius = UDim.new(0, 6)
+
+-- Root Transparency Input
+local rootTransparencyInput = Instance.new("TextBox", frame)
+rootTransparencyInput.Size = UDim2.new(1, -20, 0, 30)
+rootTransparencyInput.Position = UDim2.new(0, 10, 0, 70)
+rootTransparencyInput.PlaceholderText = "Root Transparency (0 to 1)"
+rootTransparencyInput.Text = tostring(rootTransparency)
+rootTransparencyInput.TextSize = 14
+rootTransparencyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+rootTransparencyInput.Font = Enum.Font.Gotham
+rootTransparencyInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+rootTransparencyInput.BorderSizePixel = 0
+rootTransparencyInput.ClearTextOnFocus = false
+
+local rootInputCorner = Instance.new("UICorner", rootTransparencyInput)
+rootInputCorner.CornerRadius = UDim.new(0, 6)
+
+-- Visual Transparency Input
+local visualTransparencyInput = Instance.new("TextBox", frame)
+visualTransparencyInput.Size = UDim2.new(1, -20, 0, 30)
+visualTransparencyInput.Position = UDim2.new(0, 10, 0, 110)
+visualTransparencyInput.PlaceholderText = "HitboxVisual Transparency (0 to 1)"
+visualTransparencyInput.Text = tostring(visualTransparency)
+visualTransparencyInput.TextSize = 14
+visualTransparencyInput.TextColor3 = Color3.fromRGB(255, 255, 255)
+visualTransparencyInput.Font = Enum.Font.Gotham
+visualTransparencyInput.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+visualTransparencyInput.BorderSizePixel = 0
+visualTransparencyInput.ClearTextOnFocus = false
+
+local visualInputCorner = Instance.new("UICorner", visualTransparencyInput)
+visualInputCorner.CornerRadius = UDim.new(0, 6)
+
+-- Function to apply hitbox
+local function applyHitbox(player)
+    local function setupCharacter(character)
+        task.spawn(function()
+            local root = character:WaitForChild("HumanoidRootPart", 10)
+            if root and root:IsA("BasePart") then
+                while enabled and root.Parent == character do
+                    -- Constantly enforce size and transparency
+                    root.Size = HITBOX_SIZE
+                    root.Transparency = rootTransparency
+                    root.CanCollide = false
+
+                    -- Setup visual
+                    local visual = root:FindFirstChild("HitboxVisual")
+                    if not visual then
+                        visual = Instance.new("SelectionBox")
+                        visual.Name = "HitboxVisual"
+                        visual.Adornee = root
+                        visual.Color3 = Color3.fromRGB(255, 0, 0)
+                        visual.LineThickness = 0.05
+                        visual.Transparency = visualTransparency
+                        visual.Parent = root
+                    else
+                        visual.Transparency = visualTransparency
+                    end
+
+                    task.wait(0.1) -- Check every 0.1s to keep size consistent
+                end
+            end
+        end)
+    end
+
+    player.CharacterAdded:Connect(setupCharacter)
+
+    if player.Character then
+        setupCharacter(player.Character)
+    end
+end
+
+-- Enable hitbox for all players
+local function enableHitbox()
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= Players.LocalPlayer then
+            applyHitbox(player)
+        end
+    end
+end
+
+-- Disable hitbox (remove visual only)
+local function disableHitbox()
+    for _, player in pairs(Players:GetPlayers()) do
+        local character = player.Character
+        if character then
+            local root = character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local visual = root:FindFirstChild("HitboxVisual")
+                if visual then
+                    visual:Destroy()
+                end
+            end
+        end
+    end
+end
+
+-- Toggle Hitbox
+toggleButton.MouseButton1Click:Connect(function()
+    enabled = not enabled
+    if enabled then
+        toggleButton.Text = "Disable Hitbox"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
+        enableHitbox()
+    else
+        toggleButton.Text = "Enable Hitbox"
+        toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+        disableHitbox()
+    end
+end)
+
+-- Root Transparency Update
+rootTransparencyInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local value = tonumber(rootTransparencyInput.Text)
+        if value then
+            rootTransparency = math.clamp(value, 0, 1)
+            enableHitbox()
+        end
+    end
+end)
+
+-- Visual Transparency Update
+visualTransparencyInput.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        local value = tonumber(visualTransparencyInput.Text)
+        if value then
+            visualTransparency = math.clamp(value, 0, 1)
+            enableHitbox()
+        end
+    end
+end)
+
+-- Reapply hitbox after reset or new player joins
+local function onPlayerAdded(player)
+    if player ~= Players.LocalPlayer then
+        player.CharacterAdded:Connect(function()
+            if enabled then
+                applyHitbox(player)
+            end
+        end)
+    end
+end
+
+-- Apply hitbox on join/reset
+for _, player in pairs(Players:GetPlayers()) do
+    if player ~= Players.LocalPlayer then
+        onPlayerAdded(player)
+    end
+end
+
+Players.PlayerAdded:Connect(onPlayerAdded)
+
+local targetAnimationSpeed = 5.9 -- Default animation speed
+local toolName = "Fight"
 
 local player = game.Players.LocalPlayer
-local function setupCharacter(character)
+local enabled = false -- Variable to track if animation speed adjustment is enabled
+
+-- Create GUI for enabling/disabling animation speed adjustment
+local screenGui = game.CoreGui:FindFirstChild("AnimationSpeedGui")
+if not screenGui then
+    screenGui = Instance.new("ScreenGui", game.CoreGui)
+    screenGui.Name = "AnimationSpeedGui"
+end
+
+local frame = Instance.new("Frame", screenGui)
+frame.Size = UDim2.new(0, 320, 0, 180)
+frame.Position = UDim2.new(0.05, 0, 0.2, 0)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.BackgroundTransparency = 0.2
+frame.BorderSizePixel = 0
+frame.Active = true
+frame.Draggable = true
+
+local UICorner = Instance.new("UICorner", frame)
+UICorner.CornerRadius = UDim.new(0, 10)
+
+local title = Instance.new("TextLabel", frame)
+title.Size = UDim2.new(1, 0, 0, 30)
+title.Text = "FightInASchool F/S"
+title.TextSize = 18
+title.TextColor3 = Color3.fromRGB(255, 255, 255)
+title.Font = Enum.Font.GothamBold
+title.BackgroundTransparency = 1
+
+-- Toggle Button
+local toggleButton = Instance.new("TextButton", frame)
+toggleButton.Size = UDim2.new(1, -20, 0, 30)
+toggleButton.Position = UDim2.new(0, 10, 0, 30)
+toggleButton.Text = "Enable Fist Speed"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.Font = Enum.Font.Gotham
+toggleButton.TextSize = 14
+toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+toggleButton.BorderSizePixel = 0
+
+local toggleCorner = Instance.new("UICorner", toggleButton)
+toggleCorner.CornerRadius = UDim.new(0, 6)
+
+-- TextBox for speed input
+local speedTextBox = Instance.new("TextBox", frame)
+speedTextBox.Size = UDim2.new(1, -20, 0, 30)
+speedTextBox.Position = UDim2.new(0, 10, 0, 70)
+speedTextBox.PlaceholderText = "Set Speed (Max 20)"
+speedTextBox.Text = tostring(targetAnimationSpeed)
+speedTextBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+speedTextBox.Font = Enum.Font.Gotham
+speedTextBox.TextSize = 14
+speedTextBox.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+speedTextBox.BorderSizePixel = 0
+
+local textBoxCorner = Instance.new("UICorner", speedTextBox)
+textBoxCorner.CornerRadius = UDim.new(0, 6)
+
+-- Function to adjust animation speed
+local function adjustAnimationSpeed(character)
     local humanoid = character:WaitForChild("Humanoid")
     local animator = humanoid:FindFirstChild("Animator")
 
-   
     local function isToolEquipped()
         local tool = character:FindFirstChild(toolName)
         return tool and tool:IsA("Tool")
     end
 
-  
     task.spawn(function()
-        while true do
+        while enabled do
             if isToolEquipped() and animator then
                 for _, track in pairs(animator:GetPlayingAnimationTracks()) do
-                    track:AdjustSpeed(targetAnimationSpeed) 
+                    track:AdjustSpeed(targetAnimationSpeed)
                 end
             end
-            task.wait(0.1) 
+            task.wait(0.1)
         end
     end)
 end
 
+-- Setup character and apply animation speed adjustment
+local function setupCharacter(character)
+    if enabled then
+        adjustAnimationSpeed(character)
+    end
+end
 
-player.CharacterAdded:Connect(setupCharacter)
+-- Enable animation speed adjustment
+local function enableAnimationSpeedAdjustment()
+    enabled = true
+    toggleButton.Text = "Disable Fist Speed"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(255, 70, 70)
 
+    -- Apply to the current character and all future characters
+    if player.Character then
+        setupCharacter(player.Character)
+    end
+    player.CharacterAdded:Connect(setupCharacter)
+end
 
+-- Disable animation speed adjustment
+local function disableAnimationSpeedAdjustment()
+    enabled = false
+    toggleButton.Text = "Enable Fist Speed"
+    toggleButton.BackgroundColor3 = Color3.fromRGB(70, 70, 70)
+end
+
+-- Validate and update speed
+local function updateSpeed()
+    local inputSpeed = tonumber(speedTextBox.Text)
+    if inputSpeed and inputSpeed > 0 and inputSpeed <= 20 then
+        targetAnimationSpeed = inputSpeed
+    else
+        speedTextBox.Text = tostring(targetAnimationSpeed) -- Reset to last valid speed if input is invalid
+    end
+end
+
+-- Toggle button functionality
+toggleButton.MouseButton1Click:Connect(function()
+    if enabled then
+        disableAnimationSpeedAdjustment()
+    else
+        enableAnimationSpeedAdjustment()
+    end
+end)
+
+-- TextBox functionality (Update speed when Enter is pressed)
+speedTextBox.FocusLost:Connect(function(enterPressed)
+    if enterPressed then
+        updateSpeed()
+    end
+end)
+
+-- Apply settings when the player joins or resets
 if player.Character then
     setupCharacter(player.Character)
 end
+player.CharacterAdded:Connect(setupCharacter)
